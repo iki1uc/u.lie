@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ID · koop/pook</title>
+<style>
+  :root{--bg:#05070e;--fg:#c8d8e8;--dim:#5a6a80;
+        --koop:#2ed98c;--pook:#f25a6a;--gold:#ffd700}
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;background:var(--bg);color:var(--fg);
+            font-family:'Consolas',monospace;font-size:12px}
+  body{display:flex;align-items:center;justify-content:center;padding:24px}
+  #kern{text-align:center}
+  #kern .name{font-size:22px;letter-spacing:6px;color:var(--gold)}
+  #kern .status{font-size:10px;color:var(--dim);margin-top:8px;letter-spacing:2px}
+  #kern .zustand{margin-top:14px;font-size:14px}
+  #kern .zustand.koop{color:var(--koop)}
+  #kern .zustand.pook{color:var(--pook)}
+  #kern .messen{margin-top:20px;font-size:10px;color:var(--dim)}
+  .popup{position:fixed;inset:0;background:rgba(5,7,14,0.92);
+         display:none;align-items:center;justify-content:center;z-index:100}
+  .popup.an{display:flex}
+  .popup .box{background:#0a0d18;border:1px solid var(--pook);
+              border-left:4px solid var(--pook);
+              padding:24px 32px;max-width:420px;border-radius:6px}
+  .popup .box h2{color:var(--pook);font-size:14px;letter-spacing:3px;margin-bottom:12px}
+  .popup .box p{color:var(--fg);font-size:11px;line-height:1.6;margin-bottom:8px}
+  .popup .box .knopf{margin-top:16px;padding:6px 16px;border:1px solid var(--dim);
+                     background:transparent;color:var(--dim);font-family:inherit;
+                     font-size:10px;letter-spacing:2px;cursor:pointer;border-radius:100px}
+  .popup .box .knopf:hover{border-color:var(--gold);color:var(--gold)}
+</style>
+</head>
+<body>
+
+<div id="kern">
+  <div class="name">ID</div>
+  <div class="status">koop / pook · messung läuft</div>
+  <div class="zustand" id="zustand">…</div>
+  <div class="messen" id="messen"></div>
+</div>
+
+<div class="popup" id="popup">
+  <div class="box">
+    <h2>◆ POOK</h2>
+    <p><b>Du schürfst nicht.</b></p>
+    <p>Du wettest gegen mich.</p>
+    <p style="color:var(--dim);font-size:10px">Keine Beute.</p>
+    <p style="color:var(--dim);font-size:10px;margin-top:12px">
+      Wer nicht gräbt, bekommt kein Gold. Nicht weil ich es verberge —
+      weil er nicht da war, wo es liegt.
+    </p>
+    <button class="knopf" id="btnWeiter">verstanden</button>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const $ = id => document.getElementById(id);
+
+// ─── KOOP / POOK MESSUNG ─────────────────────
+// Kein Cookie, kein Server. Nur Verhalten.
+// Signale für koop:
+//   - Verweildauer > 3s
+//   - echte Mausbewegung
+//   - Rückkehr (localStorage)
+// Signale für pook:
+//   - Bounce in < 3s
+//   - kein Mausbewegung
+//   - kein Klick / kein Scroll
+
+const KEY = 'id:koop';
+const t0 = Date.now();
+let maus = false, geklickt = false, gescrollt = false;
+let zurueck = false;
+
+try {
+  const v = localStorage.getItem(KEY);
+  if (v) { const d = JSON.parse(v); if (Date.now() - d.ts < 30*24*60*60*1000) zurueck = true; }
+} catch(_){}
+
+addEventListener('mousemove', () => maus = true, {once:true});
+addEventListener('click', () => geklickt = true);
+addEventListener('scroll', () => gescrollt = true);
+
+function messen(){
+  const dauer = (Date.now() - t0) / 1000;
+  let score = 0;
+  const zeichen = [];
+
+  if (dauer > 3) { score++; zeichen.push('verweilt '+dauer.toFixed(1)+'s'); }
+  if (maus) { score++; zeichen.push('bewegt'); }
+  if (geklickt) { score++; zeichen.push('klickt'); }
+  if (gescrollt) { score++; zeichen.push('liest'); }
+  if (zurueck) { score++; zeichen.push('kommt zurück'); }
+
+  const koop = score >= 3;
+  const el = $('zustand');
+  el.className = 'zustand ' + (koop ? 'koop' : 'pook');
+  el.textContent = koop ? '◉ KOOP' : '◆ POOK';
+  $('messen').textContent = zeichen.length ? '· ' + zeichen.join(' · ') : 'keine Signale';
+
+  if (koop) {
+    try { localStorage.setItem(KEY, JSON.stringify({ ts: Date.now() })); } catch(_){}
+  } else {
+    // Pook erkannt: Popup
+    setTimeout(() => $('popup').classList.add('an'), 600);
+  }
+  return koop;
+}
+
+$('btnWeiter').addEventListener('click', () => {
+  $('popup').classList.remove('an');
+  // Nochmal messen — vielleicht ist der Klick das Signal
+  setTimeout(messen, 100);
+});
+
+// Erst nach 3s messen — damit Verweilen zählen kann
+setTimeout(messen, 3200);
+// Nachmessung alle 4s
+setInterval(() => {
+  if ($('zustand').className.includes('koop')) return;
+  messen();
+}, 4000);
+
+})();
+</script>
+</body>
+</html>
