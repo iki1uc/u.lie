@@ -2,64 +2,300 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<title>evoMIND</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ANMELDUNG · was dein Rechner abbildet</title>
 <style>
-    body {
-        font-family: monospace;
-        background: #f5f5f5;
-        color: #222;
-        padding: 40px;
-        text-align: center;
-    }
-    suite {
-        display: block;
-        font-size: 32px;
-        margin-bottom: 20px;
-        font-weight: bold;
-    }
-    slide {
-        display: block;
-        font-size: 18px;
-        margin-bottom: 20px;
-        opacity: 0.7;
-    }
-    .puzzle {
-        font-size: 26px;
-        padding: 20px;
-        border: 2px dashed #444;
-        display: inline-block;
-        margin-top: 20px;
-    }
+  *{margin:0;padding:0;box-sizing:border-box}
+  :root{
+    --bg:#05070e;--card:#0a0d18;--line:#1a2030;
+    --fg:#c8d8e8;--dim:#5a6a80;
+    --gold:#ffd700;--cyan:#4dd0e1;--green:#2ed98c;
+    --red:#f25a6a;--orange:#f5a342;--purple:#a78bfa;
+  }
+  html,body{min-height:100%;background:var(--bg);color:var(--fg);
+            font-family:'Consolas',monospace;font-size:12px;line-height:1.5}
+  body{padding:24px;max-width:1100px;margin:0 auto}
+  h1{font-size:16px;letter-spacing:3px;color:var(--gold);margin-bottom:4px}
+  h1 small{color:var(--dim);font-size:10px;letter-spacing:1px;margin-left:8px}
+  h2{font-size:11px;color:var(--dim);letter-spacing:2px;
+     border-bottom:1px solid var(--line);padding-bottom:5px;margin:24px 0 12px}
+  .sub{color:var(--dim);font-size:10px;margin-bottom:20px}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+        gap:10px;margin-bottom:8px}
+  .box{background:var(--card);border:1px solid var(--line);border-radius:8px;
+       padding:12px 14px;transition:border-color 0.3s}
+  .box.hoch{border-color:var(--green)}
+  .box.mittel{border-color:var(--orange)}
+  .box.niedrig{border-color:var(--red)}
+  .box .name{font-size:9px;color:var(--dim);letter-spacing:2px;text-transform:uppercase}
+  .box .wert{font-size:18px;font-weight:bold;color:var(--fg);margin:4px 0 2px;
+             word-break:break-word}
+  .box .note{font-size:10px;color:var(--dim);line-height:1.4}
+  .box.hoch .wert{color:var(--green)}
+  .box.mittel .wert{color:var(--orange)}
+  .box.niedrig .wert{color:var(--red)}
+
+  .tip{background:#080b14;border-left:3px solid var(--gold);
+       padding:10px 14px;border-radius:4px;margin-top:10px;font-size:11px}
+  .tip b{color:var(--gold)}
+  .tip .schuerf{color:var(--cyan)}
+
+  .karte{background:var(--card);border:1px solid var(--line);border-radius:8px;
+         padding:16px 18px;margin-top:12px}
+  .achse{display:flex;align-items:center;gap:12px;padding:6px 0;
+         border-bottom:1px solid #0e1420;font-size:11px}
+  .achse:last-child{border-bottom:none}
+  .achse .label{width:100px;color:var(--dim)}
+  .achse .track{flex:1;height:5px;background:#0f1420;border-radius:3px;overflow:hidden}
+  .achse .fill{height:100%;transition:width 0.6s ease}
+  .achse .val{width:70px;text-align:right;font-weight:bold}
+
+  button{background:#0f1420;border:1px solid var(--line);color:var(--dim);
+         padding:8px 18px;border-radius:100px;font-family:inherit;font-size:10px;
+         letter-spacing:2px;cursor:pointer;transition:0.2s;margin-top:16px}
+  button:hover{border-color:var(--gold);color:var(--gold)}
+  button.aktiv{border-color:var(--cyan);color:var(--cyan);background:rgba(77,208,225,0.08)}
+
+  .log{margin-top:16px;font-size:10px;color:var(--dim);max-height:100px;overflow-y:auto;
+       border-top:1px solid var(--line);padding-top:10px}
+  .log div{padding:2px 0}
+  .log .ok{color:var(--green)}
+  .log .warn{color:var(--orange)}
+  .log .info{color:var(--cyan)}
 </style>
 </head>
-
 <body>
 
-<suite>evoMIND</suite>
-<slide>dimension.flow()</slide>
+<h1>◉ ANMELDUNG <small>was dein Rechner abbildet</small></h1>
+<div class="sub">gemessen beim Start · ohne Server · ohne Cookie · ohne Werbung</div>
 
-<div class="puzzle" data-piece="evoMIND">
-    ((( evoMIND dimension.flow() )))
-</div>
+<h2>▣ MESSGERÄTE · was da ist</h2>
+<div class="grid" id="geraete"></div>
+
+<h2>▣ SCHÜRF-KARTE · wo noch was liegt</h2>
+<div class="karte" id="karte"></div>
+
+<h2>▣ TIPP · wie du mehr rausholst</h2>
+<div id="tipps"></div>
+
+<button id="btnNeu">⟳ NEU MESSEN</button>
+<button id="btnSchuerf">⛏ SCHÜRFEN</button>
+
+<div class="log" id="log"></div>
 
 <script>
-// Sichtbares Startsignal
-console.log("evoMIND geladen");
+(function(){
+'use strict';
 
-// Engine‑Start (dein System)
-if (window.CUBE_MIND && window.MATRIX9x9) {
-    const start = window.CUBE_MIND.start();
-    console.log("CUBE_MIND:", start);
+const $ = id => document.getElementById(id);
+const logBox = $('log');
 
-    // Sichtbare Ausgabe
-    const out = document.createElement("pre");
-    out.textContent = JSON.stringify(start, null, 2);
-    document.body.appendChild(out);
-} else {
-    console.warn("Engine nicht geladen");
+function log(msg, cls){
+  const d = document.createElement('div');
+  d.className = cls || '';
+  d.textContent = '[' + new Date().toLocaleTimeString() + '] ' + msg;
+  logBox.appendChild(d);
+  while (logBox.children.length > 30) logBox.removeChild(logBox.firstChild);
+  logBox.scrollTop = logBox.scrollHeight;
 }
-</script>
 
+function stufe(wert, hoch, mittel){
+  if (wert >= hoch) return 'hoch';
+  if (wert >= mittel) return 'mittel';
+  return 'niedrig';
+}
+
+function box(name, wert, note, klasse){
+  return `<div class="box ${klasse||''}">
+    <div class="name">${name}</div>
+    <div class="wert">${wert}</div>
+    <div class="note">${note}</div>
+  </div>`;
+}
+
+// ─── WAS DER BROWSER EHRLICH MESSEN KANN ─────────────
+async function messen(){
+  const g = $('geraete');
+  g.innerHTML = '';
+  const tipps = [];
+  const achsen = [];
+
+  // 1. CPU-Kerne
+  const kerne = navigator.hardwareConcurrency || 0;
+  const kKlasse = stufe(kerne, 8, 4);
+  g.innerHTML += box('CPU-Kerne', kerne || '?', 'gleichzeitige Fäden',
+                     kKlasse);
+  achsen.push({ label:'CPU', wert: Math.min(100, kerne*10),
+                cls: kerne>=8?'var(--green)':kerne>=4?'var(--orange)':'var(--red)' });
+  if (kerne <= 4) tipps.push({ titel:'CPU',
+    text:'Wenige Kerne. Rechne mit Workers — ' +
+         'verteile Arbeit auf alle Kerne, statt einen zu quälen.' });
+
+  // 2. RAM (grob, gerundet)
+  const ram = navigator.deviceMemory || 0;
+  const rKlasse = stufe(ram, 8, 4);
+  g.innerHTML += box('RAM (grob)', ram ? ram + ' GB' : '?',
+                     'vom Browser gerundet', rKlasse);
+  achsen.push({ label:'RAM', wert: Math.min(100, ram*10),
+                cls: ram>=8?'var(--green)':ram>=4?'var(--orange)':'var(--red)' });
+  if (ram && ram <= 4) tipps.push({ titel:'RAM',
+    text:'Knapp. Halte Datenbanken klein, gib Speicher frei, ' +
+         'statt alles im RAM zu halten.' });
+
+  // 3. GPU (über WebGL)
+  let gpuName = '?', gpuHerst = '?';
+  try {
+    const c = document.createElement('canvas');
+    const gl = c.getContext('webgl2') || c.getContext('webgl');
+    if (gl){
+      const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+      if (dbg){
+        gpuName = gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '?';
+        gpuHerst = gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '?';
+      }
+    }
+  } catch(_){}
+  const gKlasse = /nvidia|radeon|apple|m1|m2|m3|arc/i.test(gpuName) ? 'hoch' :
+                  /intel|mesa|llvmpipe|software/i.test(gpuName) ? 'mittel' : 'mittel';
+  g.innerHTML += box('GPU', gpuHerst, gpuName.slice(0, 42), gKlasse);
+  achsen.push({ label:'GPU', wert: gKlasse==='hoch'?90:gKlasse==='mittel'?55:20,
+                cls: gKlasse==='hoch'?'var(--green)':'var(--orange)' });
+  if (/intel|software/i.test(gpuName))
+    tipps.push({ titel:'GPU', text:'Integrierte oder Software-GPU. Rechne auf CPU ' +
+      'oder nutze WebAssembly/Workers — GPU-Beschleunigung bringt kaum was.' });
+
+  // 4. Speicherplatz
+  let quota = 0, usage = 0;
+  try {
+    if (navigator.storage && navigator.storage.estimate){
+      const s = await navigator.storage.estimate();
+      quota = Math.round((s.quota||0) / 1024 / 1024 / 1024);
+      usage = Math.round((s.usage||0) / 1024 / 1024);
+    }
+  } catch(_){}
+  g.innerHTML += box('Speicher frei', quota ? quota + ' GB' : '?',
+                     usage ? usage + ' MB benutzt' : 'offen', quota>=10?'hoch':'mittel');
+  achsen.push({ label:'Speicher', wert: Math.min(100, quota*5),
+                cls: quota>=10?'var(--green)':'var(--orange)' });
+
+  // 5. Netz (grob)
+  let netz = '?', netzWert = 50;
+  try {
+    const c = navigator.connection;
+    if (c){
+      netz = c.effectiveType || '?';
+      if (c.downlink) netz += ' · ' + c.downlink + ' Mbit/s';
+      netzWert = c.effectiveType === '4g' ? 90 : c.effectiveType === '3g' ? 50 : 25;
+    }
+  } catch(_){}
+  g.innerHTML += box('Netz', netz, 'effektiv, nicht roh',
+                     netzWert>=80?'hoch':netzWert>=40?'mittel':'niedrig');
+  achsen.push({ label:'Netz', wert: netzWert,
+                cls: netzWert>=80?'var(--green)':netzWert>=40?'var(--orange)':'var(--red)' });
+
+  // 6. Moderne Fähigkeiten
+  const kann = {
+    'WebAssembly': typeof WebAssembly !== 'undefined',
+    'ServiceWorker': 'serviceWorker' in navigator,
+    'WebGPU': 'gpu' in navigator,
+    'WebGL2': (()=>{try{return !!document.createElement('canvas').getContext('webgl2')}catch(_){return false}})(),
+    'Workers': typeof Worker !== 'undefined',
+    'BroadcastChannel': typeof BroadcastChannel !== 'undefined'
+  };
+  const anzahl = Object.values(kann).filter(Boolean).length;
+  g.innerHTML += box('Fähigkeiten', anzahl + '/6',
+                     Object.entries(kann).filter(([_,v])=>v).map(([k])=>k).join(' · '),
+                     stufe(anzahl, 5, 3));
+  achsen.push({ label:'Fähigkeiten', wert: anzahl/6*100,
+                cls: anzahl>=5?'var(--green)':anzahl>=3?'var(--orange)':'var(--red)' });
+
+  // 7. Anzeige
+  const dpr = window.devicePixelRatio || 1;
+  const flaeche = (screen.width * screen.height * dpr * dpr / 1e6).toFixed(1);
+  g.innerHTML += box('Bildschirm', flaeche + ' MP',
+                     screen.width + '×' + screen.height + ' @' + dpr + 'x',
+                     dpr>=2?'hoch':'mittel');
+  achsen.push({ label:'Bild', wert: Math.min(100, dpr*40),
+                cls: dpr>=2?'var(--green)':'var(--orange)' });
+
+  // 8. Sparmodus / Atmung
+  const spart = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const dunkel = matchMedia('(prefers-color-scheme: dark)').matches;
+  const batt = await (async()=>{ try { const b = await navigator.getBattery(); return b; } catch(_){ return null; } })();
+  let battText = 'kein Akku (Steckdose)', battKlasse = 'hoch';
+  if (batt){
+    const p = Math.round(batt.level*100);
+    battText = p + '%' + (batt.charging ? ' ⚡ lädt' : '');
+    battKlasse = p>50?'hoch':p>20?'mittel':'niedrig';
+    if (p <= 20) tipps.push({ titel:'Akku', text:'Wenig Saft. Runtertakten, ' +
+      'Hintergrund-Tabs schließen, schwere Berechnungen verschieben.' });
+  }
+  g.innerHTML += box('Energie', battText,
+                     (spart?'Sparmodus an':'Sparmodus aus') + ' · ' +
+                     (dunkel?'dunkel':'hell'),
+                     battKlasse);
+  achsen.push({ label:'Energie', wert: batt ? batt.level*100 : 100,
+                cls: battKlasse==='hoch'?'var(--green)':battKlasse==='mittel'?'var(--orange)':'var(--red)' });
+
+  // ─── SCHÜRF-KARTE ──────────────────────────────
+  const karte = $('karte');
+  karte.innerHTML = achsen.map(a =>
+    `<div class="achse">
+       <span class="label">${a.label}</span>
+       <div class="track"><div class="fill" style="width:${a.wert}%;
+         background:${a.cls}"></div></div>
+       <span class="val" style="color:${a.cls}">${Math.round(a.wert)}%</span>
+     </div>`
+  ).join('');
+
+  // ─── TIPPS ─────────────────────────────────────
+  if (tipps.length === 0)
+    tipps.push({ titel:'Alles gut', text:'Nichts zu holen — dein Rechner ist ' +
+      'ausbalanciert. Nutze ihn so, wie er ist.' });
+
+  $('tipps').innerHTML = tipps.map(t =>
+    `<div class="tip"><b>${t.titel}</b> · ${t.text}</div>`
+  ).join('');
+
+  log('Messung fertig · ' + kerne + ' Kerne · ' +
+      (ram?ram+'GB':'?') + ' RAM · ' + anzahl + '/6 Fähigkeiten', 'ok');
+}
+
+// ─── SCHÜRFEN — was noch zu holen ist ────────────
+function schuerfen(){
+  log('⛏ Schürfen läuft …', 'info');
+  const ideen = [
+    'Workers starten → alle Kerne nutzen',
+    'WebAssembly laden → 2-10× schneller als JS',
+    'BroadcastChannel → Tabs reden ohne Server',
+    'ServiceWorker → offline laufen',
+    'IndexedDB → große Daten lokal halten',
+    'WebGL/WebGPU → rechnen auf der GPU',
+    'Intl.DateTimeFormat → Zeit ohne Library',
+    'URL.createObjectURL → Datei ohne Server',
+    'ResizeObserver → Layout ohne Polling',
+    'requestIdleCallback → Arbeit in Lücken'
+  ];
+  let i = 0;
+  const t = setInterval(() => {
+    if (i >= ideen.length){ clearInterval(t); log('⛏ fertig', 'ok'); return; }
+    log('· ' + ideen[i], 'info');
+    i++;
+  }, 120);
+}
+
+$('btnNeu').addEventListener('click', messen);
+$('btnSchuerf').addEventListener('click', () => {
+  $('btnSchuerf').classList.add('aktiv');
+  schuerfen();
+  setTimeout(()=>$('btnSchuerf').classList.remove('aktiv'), 2000);
+});
+
+log('Anmeldung gestartet', 'ok');
+messen();
+
+})();
+</script>
 </body>
 </html>
